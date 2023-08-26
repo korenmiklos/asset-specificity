@@ -1,0 +1,539 @@
+# *********************************************************************************************
+# Description: this is the simulation code for the model in the Appendix. We include transportation
+# cost, asset depreciation cost by adding parameters tau and k respectively. In addition, we model 
+# customization by changing the size of the market (i.e., market thickness).
+# *********************************************************************************************
+rm(list = ls())
+
+
+
+library(nleqslv)  # nonlinear solver
+library(pracma)  # A package that includes the Erf and Erfc function
+library(BB)
+library(cubature)  # multiple integral
+library(data.table)
+library(pspline)
+gc()
+
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # set the path of this R file as the current file path
+CURRENTPATH = getwd()
+
+
+
+
+  # ***************** 1. Functions *****************
+  # ***************** 1.1. Parameters *****************
+  mu  = 20;  
+  theta= 0.5; 
+  r = 0.05; 
+  gamma = 0.2; 
+  C = 15; 
+  sigma = 5; 
+  lambda = 0.2;
+  
+  bandwith = 5;   
+  L = mu - bandwith*sigma;  
+  H = mu + bandwith*sigma  # L and H are for integration. 
+  
+  # Variable Declaration 
+  TotalAsset = 500
+  R.B = 2; R.S = 2; 
+  B = 5;  S = 5;  
+  Parameters = c(  0, 0, 0, 0 )
+  B.prime = TotalAsset/2.5 * 1.5
+  S.prime = TotalAsset/2.5 * 1
+  
+  
+  # ***************** 1.2. Regular sellers and regular buyers functions *****************
+  profit <- function(x){
+    return( (x>0)* x )
+  }
+  profit.re <- function(z){
+    return( delta + profit(z)) 
+  }
+  utilization <- function(z, ReplaceWithProductivity=FALSE){
+    if(ReplaceWithProductivity==FALSE){
+      return( (z>0)*sqrt(2*abs(z)) )
+    }else{
+      return( z )
+    }
+  }
+  productivity <- function(z){
+    return( z )
+  }
+  Mass.Assets <- function(TotalAsset){
+    return( list( B.prime = TotalAsset/2.5 * 1.5, S.prime = TotalAsset/2.5 * 1 ) )
+  }
+  CDF.F <- function(x){
+    return( pnorm( x, mean = mu, sd = sigma ) )
+  }
+  PDF.F <- function(x){
+    return( dnorm( x, mean = mu, sd = sigma ) )
+  }
+  K.S <- function(B){
+    return( 1/(lambda+r+(1-theta)*gamma*B)  )
+  }
+  K.B <- function(S){
+    return( theta*gamma*S/(lambda+r+theta*gamma*S)/(lambda+r) )
+  }
+  g.S <- function(R.S,z){
+    if( R.S <= L ){
+      return( 0 * z )
+    } 
+    return( PDF.F(z) / CDF.F(R.S) * (z < R.S) )
+  }
+  G.S <- function( R.S, z ){
+    return( CDF.F(z) / CDF.F(R.S) * (z < R.S) + (z >= R.S) )
+  }
+  g.B <- function(R.B,z){
+    if( R.B >= H ){  # Note: if R.B is too large, then 1-CDF.F(R.B) will be very small and the
+      # results will be quite singular. Because it is neglegible for z >= H, I can set them 0.
+      return( 0 * z )
+    }
+    return( (z >= R.B) * PDF.F(z) / (1-CDF.F(R.B))  )
+  }
+  G.B <- function(R.B,z){
+    return( (CDF.F(z) - CDF.F(R.B)) / (1-CDF.F(R.B)) * (z >= R.B) )
+  }
+  g.S.prime <- function(z){
+    # I don't need this function in solving the parameters. 
+    # As a result, I don't have to include R.B and R.S as parameters for this function
+    return( (z>=R.B)*( B.prime/S.prime*gamma*S/(lambda+gamma*S)*PDF.F(z) + PDF.F(z) ) + (z>=R.S&z<R.B)*PDF.F(z) + (z<R.S)*lambda/(lambda+gamma*B)*PDF.F(z) )
+  }
+  
+  W.B = lambda/r* integrate( function(z)  K.B(S)*(profit(z)-profit(R.B))*PDF.F(z), lower = R.B, upper = H )$value
+  V.B.fun <- function(b){
+    return( K.B(S)*(profit(b)-profit(R.B)) + W.B )
+  }
+  W.S.fun <- function(s){
+    result =  1/(r+lambda)* (profit(s)-k) +lambda/r*( integrate(function(z) (K.S(B)*(profit(z)-profit(R.S))+(profit(R.S)-k)/(r+lambda))*PDF.F(z),lower=L,upper=R.S)$value + integrate( function(z) 1/(lambda+r)*(profit(z)-k)*PDF.F(z) , lower=R.S, upper=H)$value)
+    return( result )
+  }
+  V.S.fun <- function(s){
+    return( K.S(B)*(profit(s)-profit(R.S)) + W.S.fun(R.S) ) 
+  }
+  
+  Equations.All <- function( Parameters ){
+    Rs = Parameters[1:2];   BS = Parameters[3:4]
+    # Parameters = c( Rs, BS )
+    R.B = Rs[1]; R.S = Rs[2]; B = BS[1]; S = BS[2]
+    print( paste0("current R.S=", R.S, ", R.B=", R.B, ", B=", B, ", S=",S ) )
+    # Note: the function will change as the values of B.next and S.next change. So there is no
+    # need to define a new function in the while loop.
+    Integrand.A13 <- function(s){
+      result = K.S(B) * (profit(R.S) - profit(s)) -tau- ( profit(R.S) - profit(R.B) ) / (r+lambda)
+      result = g.S( R.S, s) * result   # Multiply by the density function
+      return(result)
+    }
+    Integrand.A14 <- function(b){
+      result = ( profit(b) - profit(R.S) ) / (r+lambda) - K.B(S) * ( profit(b) - profit(R.B) )-tau
+      result = g.B( R.B, b) * result   # Multiply by the density function
+      return(  result  )
+    }
+    residual1 = gamma*S*theta*integrate(Integrand.A13, lower=L, upper=H)$value - C
+    residual2 = gamma*B*(1-theta)*integrate(Integrand.A14, lower=L, upper=H)$value - C
+    residual3 = B - B.prime*(1-CDF.F(R.B))*lambda/(lambda+gamma*S)
+    residual4 = S - S.prime*lambda/(lambda+gamma*B)*CDF.F(R.S)
+    return( c( residual1, residual2, residual3, residual4  ) )
+  }
+  Solve.Parameters <- function( UseOptimization=TRUE ){
+    # If UseOptimiztation==TRUE, use optimization method. Otherwise use nonlinear solver
+    InitialValues =  c(R.B,R.S,B,S)
+    if( UseOptimization==TRUE ){
+      OptObj <- function( parameters ){
+        return( sum(abs(Equations.All(parameters))) )
+      }
+      result = optim( InitialValues, OptObj )
+      return( result$par )
+    }else{
+      sol = nleqslv( InitialValues, Equations.All)
+      return(sol$x)
+    }
+  }
+  price <- function( b,s ){
+    part1 = theta*( K.S(B)*(profit(s)-profit(R.S)) + profit(R.S)/(r+lambda) )
+    part2 =  (1-theta)*( profit(b)/(r+lambda) - tau - K.B(S)*(profit(b)-profit(R.B)) )-k/r
+    part3 =  integrate( function(z) PDF.F(z)* lambda*profit(z)/(r*(r+lambda)), lower = R.S, upper = H )$value
+    part4 = lambda/r*integrate( function(z) PDF.F(z)*( K.S(B)*( profit(z) - profit(R.S) ) + profit(R.S)/(r+lambda) ), lower = L,   upper = R.S  )$value
+    part5 = integrate( function(z)  PDF.F(z)*lambda*K.B(S)*(profit(z)-profit(R.B))/r , lower = R.B, upper = H  )$value  # This part is minus in the final result
+    if( length(b)>1 & length(s)>1 ){
+      part1 = matrix( 1 , nrow=length(b), ncol=1) %*% t( as.vector(part1)  )
+      part2 = as.vector(part2) %*% matrix( 1 , nrow=1, ncol=length(s) )
+    }
+    return(part1+part2+part3+part4-part5)
+  }
+
+  
+  # ***************** 1.3. Liquidation sellers functions *****************
+  
+  
+  # There are two cases for liquidation sellers: Case1--V_liq > W_liq, i.e. always sell. Case 2-- V_liq < W_liq, i.e. never sell.
+  liq.equation.Case1 <- function(V.liq){
+    diff = -C+gamma*B*(1-theta)*integrate(function(b) pmax(W.S.fun(b)-V.B.fun(b)-V.liq-tau,0)*g.B(R.B,b),lower=R.B,upper=H)$value - r*V.liq-k
+    return(diff)
+  }
+  liq.equation.Case2 <- function(V.liq){
+    diff = -C+gamma*B*(1-theta)*integrate(function(b) pmax(W.S.fun(b)-V.B.fun(b)-V.liq-tau,0)*g.B(R.B,b),lower=R.B,upper=H)$value + lambda*(max(V.liq,0)-V.liq) - r*V.liq-k
+    return(diff)
+  }
+  
+  
+  price.liq <- function(b, V.liq.in=V.liq){
+    return( theta*(V.liq.in) + (1-theta)*( W.S.fun(b) - V.B.fun(b) -tau) )
+  }
+  
+  
+  # Value iterations that return the calculated value functions
+  value.iteration <- function( ReturnBuyerThrehold = TRUE ){
+    # Value iteration for liquidation sellers
+    V.liq = nleqslv( 0, liq.equation.Case1 )$x
+    V.liq2 = nleqslv( 0, liq.equation.Case2 )$x
+    if( V.liq2 > 0 ){
+      print( "Liquidation sellers prefer selling." )
+    }else{
+      print( "There is an alternative solution that liquidation sellers prefer not to sell" )
+    }
+    W.liq = lambda/(r+lambda)*V.liq
+    
+      return( list( V.liq=V.liq, W.liq=W.liq) )
+    }
+  
+  
+  
+  # *********** 2. Transportation Cost ***********
+  # *********** 2.1. Main Iterations ***********
+  
+  t1=seq(0,20,length.out=10) # Transportation cost
+  Table1 = as.data.frame( matrix( NA, nrow = length(t1), ncol= 6 )  )
+  names(Table1) <- c( "B","S", "R.B", "R.S", "AvgPrice", "AvgPrice.liq") 
+  Table1 = data.table(Table1)
+  
+  
+  for (i in 1:length(t1)) {
+    
+    tau=t1[i]; # Transportation cost
+    k=0; # Asset depreciation cost
+    
+    C = 15; 
+    TotalAssets = 500  
+    Masses = Mass.Assets(TotalAssets)
+    B.prime = Masses$B.prime
+    S.prime = Masses$S.prime
+    R.B = 2; R.S = 2; 
+    B = B.prime/3;  S = S.prime/3;
+    
+    sol = Solve.Parameters(FALSE)
+    R.B = sol[1]
+    R.S = sol[2]
+    B = sol[3]
+    S = sol[4]
+    W.B = lambda/r* integrate( function(z)  K.B(S)*(profit(z)-profit(R.B))*PDF.F(z), lower = R.B, upper = H )$value
+    
+    print( paste0("values: B=", round(B,digits = 3), ", S=", round(S,digits=3),
+                  ", R.B=", round(R.B,digits=3), ", R.S=", round(R.S,digits=3)))
+    Table1$B[i] = B
+    Table1$S[i] = S
+    Table1$R.B[i] = R.B
+    Table1$R.S[i] = R.S
+    
+    Table1$AvgPrice[i] = adaptIntegrate( function(bs) price(bs[1],bs[2])*g.S(R.S,bs[2])*g.B(R.B,bs[1]), lowerLimit=c(R.B,L), upperLimit=c(H,R.S) )$integral
+
+    # Liquidation Sellers
+    
+    result =  value.iteration(ReturnBuyerThrehold=TRUE)
+    V.liq = result$V.liq; 
+    W.liq = result$W.liq; 
+    
+    Table1$AvgPrice.liq[i] = integrate( function(b) price.liq(b)*g.B(R.B,b), lower=R.B, upper=H )$value
+  }
+  
+
+  
+  # *********** 2.2. Plot ***********
+  pdf( "FigureIA8.pdf" , width = 8, height = 6.4)
+  yrange = c( min( c(Table1$AvgPrice,Table1$AvgPrice.liq) ), max(c(Table1$AvgPrice,Table1$AvgPrice.liq))   )
+  plot( t1, Table1$AvgPrice, lwd=3 ,lty=1, col=4, type="l",ylim=yrange, xlab= "Transportation Cost", ylab = "Average Price" )
+  lines (t1, Table1$AvgPrice.liq, lwd=3, lty=2, col=3 )
+  legend("topright", c("Regular Sellers", "Liquidation Sellers"), lty=c(1,2), lwd=c(3,3), col=c(4,3),bg="white" )
+  dev.off()
+  
+  
+  # Reservation values
+  pdf( "FigureIA9.pdf" , width = 8, height = 6.4)
+  yrange = c( min(min(Table1$R.B), min(Table1$R.S)), max(max(Table1$R.B), max(Table1$R.S))  )
+  plot(  t1, Table1$R.B, type="l" , lwd=3 ,lty=2, ylim=yrange, xlab="Transportation Cost", ylab = "Reservation Values" )
+  lines(  t1, Table1$R.S, type="l" , lwd=3, col="red" )
+  legend("topright", c("Productivity Cutoff for Regular Buyers", "Productivity Cutoff for Regular Sellers"), lty=c(2,1), lwd=c(3,3), col=c("black","red"), bg="white" )
+  dev.off()
+  
+  
+  
+  # *********** 3. Customization (Market Thickness) ***********  
+  # *********** 3.1. Main Iterations ***********
+  
+  t2=seq(0.0005,0.005,length.out=10) # Market thickness
+  Table2 = as.data.frame( matrix( NA, nrow = length(t2), ncol= 6 )  )
+  names(Table2) <- c( "B","S", "R.B", "R.S", "AvgPrice", "AvgPrice.liq") 
+  Table2 = data.table(Table2)
+  
+  
+  for (i in 1:length(t2)) {
+    
+    tau=0; # Transportation cost
+    k=0; # Asset depreciation cost
+    TotalAssets=1/t2[i];
+    
+    C=15;
+    Masses = Mass.Assets(TotalAssets)
+    B.prime = Masses$B.prime
+    S.prime = Masses$S.prime
+    R.B = 2; R.S = 2; 
+    B = B.prime/3;  S = S.prime/3;
+    
+    sol = Solve.Parameters(FALSE)
+    R.B = sol[1]
+    R.S = sol[2]
+    B = sol[3]
+    S = sol[4]
+    W.B = lambda/r* integrate( function(z)  K.B(S)*(profit(z)-profit(R.B))*PDF.F(z), lower = R.B, upper = H )$value
+    
+    
+    print( paste0("values: B=", round(B,digits = 3), ", S=", round(S,digits=3),
+                  ", R.B=", round(R.B,digits=3), ", R.S=", round(R.S,digits=3)))
+    Table2$B[i] = B
+    Table2$S[i] = S
+    Table2$R.B[i] = R.B
+    Table2$R.S[i] = R.S
+    
+    Table2$AvgPrice[i] = adaptIntegrate( function(bs) price(bs[1],bs[2])*g.S(R.S,bs[2])*g.B(R.B,bs[1]), lowerLimit=c(R.B,L), upperLimit=c(H,R.S) )$integral
+    
+    # Liquidation Sellers
+    
+    result =  value.iteration(ReturnBuyerThrehold=TRUE)
+    V.liq = result$V.liq; 
+    W.liq = result$W.liq; 
+    
+    Table2$AvgPrice.liq[i] = integrate( function(b) price.liq(b)*g.B(R.B,b), lower=R.B, upper=H )$value
+  }
+  
+  # Normalization  
+  t2=seq(0.0005,0.005,length.out=10) # Market thickness
+  Table2_norm = as.data.frame( matrix( NA, nrow = length(t2), ncol= 6 )  )
+  names(Table2_norm) <- c( "B","S", "R.B", "R.S", "AvgPrice_c", "AvgPrice.liq_c") 
+  Table2_norm = data.table(Table2_norm)
+  
+  
+  for (i in 1:length(t2)) {
+    
+    C=0.01;
+    tau=0; # Transportation cost
+    k=0; # Asset depreciation cost
+    TotalAssets=1/t2[i];
+    
+    Masses = Mass.Assets(TotalAssets)
+    B.prime = Masses$B.prime
+    S.prime = Masses$S.prime
+    R.B = 2; R.S = 2; 
+    B = B.prime/3;  S = S.prime/3;
+    
+    sol = Solve.Parameters(FALSE)
+    R.B = sol[1]
+    R.S = sol[2]
+    B = sol[3]
+    S = sol[4]
+    W.B = lambda/r* integrate( function(z)  K.B(S)*(profit(z)-profit(R.B))*PDF.F(z), lower = R.B, upper = H )$value
+    
+    print( paste0("values: B=", round(B,digits = 3), ", S=", round(S,digits=3),
+                  ", R.B=", round(R.B,digits=3), ", R.S=", round(R.S,digits=3)))
+    Table2_norm$B[i] = B
+    Table2_norm$S[i] = S
+    Table2_norm$R.B[i] = R.B
+    Table2_norm$R.S[i] = R.S
+    
+    Table2_norm$AvgPrice_c[i] = adaptIntegrate( function(bs) price(bs[1],bs[2])*g.S(R.S,bs[2])*g.B(R.B,bs[1]), lowerLimit=c(R.B,L), upperLimit=c(H,R.S) )$integral
+    
+    # Liquidation Sellers
+    
+    result =  value.iteration(ReturnBuyerThrehold=TRUE)
+    V.liq = result$V.liq; 
+    W.liq = result$W.liq; 
+    
+    Table2_norm$AvgPrice.liq_c[i] = integrate( function(b) price.liq(b)*g.B(R.B,b), lower=R.B, upper=H )$value
+  }
+  
+  Table2 = cbind(t2, Table2)
+  Table2 = cbind(Table2, AvgPrice_c=Table2_norm$AvgPrice_c)
+  Table2 = cbind(Table2, AvgPrice.liq_c=Table2_norm$AvgPrice.liq_c)
+  
+  Table2$AvgPrice_norm=Table2$AvgPrice/Table2$AvgPrice_c
+  Table2$AvgPrice.liq_norm=Table2$AvgPrice.liq/Table2$AvgPrice.liq_c
+  
+  
+ 
+  # *********** 3.2. Plot ***********   
+  pdf( "FigureIA6.pdf" , width = 8, height = 6.4)
+  yrange = c( min( c(Table2$AvgPrice,Table2$AvgPrice.liq) ), max(c(Table2$AvgPrice,Table2$AvgPrice.liq))   )
+  plot( t2, Table2$AvgPrice, lwd=3 ,lty=1, col=4, type="l",ylim=yrange, xlab= "1/Market Thickness", ylab = "Average Price" )
+  lines (t2, Table2$AvgPrice.liq, lwd=3, lty=2, col=3 )
+  legend("topright", c("Regular Sellers", "Liquidation Sellers"), lty=c(1,2), lwd=c(3,3), col=c(4,3),bg="white" )
+  dev.off()
+  
+  
+  # Reservation values
+  pdf( "FigureIA7.pdf" , width = 8, height = 6.4)
+  yrange = c( min(min(Table2$R.B), min(Table2$R.S)), max(max(Table2$R.B), max(Table2$R.S))  )
+  plot(  t2, Table2$R.B, type="l" , lwd=3 ,lty=2, ylim=yrange, xlab="1/Market Thickness", ylab = "Reservation Values" )
+  lines(  t2, Table2$R.S, type="l" , lwd=3, col="red" )
+  legend("topright", c("Productivity Cutoff for Regular Buyers", "Productivity Cutoff for Regular Sellers"), lty=c(2,1), lwd=c(3,3), col=c("black","red"), bg="white" )
+  dev.off()   
+  
+  # Normalization
+  pdf( "FigureIA12.pdf" , width = 8, height = 6.4)
+  yrange = c( min( c(Table2$AvgPrice_norm,Table2$AvgPrice.liq_norm) ), max(c(Table2$AvgPrice_norm,Table2$AvgPrice.liq_norm))   )
+  plot( t2, Table2$AvgPrice_norm, lwd=3 ,lty=1, col=4, type="l",ylim=yrange, xlab= "1/Market Thickness", ylab = "Average Price" )
+  lines (t2, Table2$AvgPrice.liq_norm, lwd=3, lty=2, col=3 )
+  legend("topright", c("Regular Sellers", "Liquidation Sellers"), lty=c(1,2), lwd=c(3,3), col=c(4,3),bg="white" )
+  dev.off()
+  
+ # *********** 4. Asset Depreciation *********** 
+  # *********** 4.1. Main Iterations ***********
+  
+  kn=seq(0,2,length.out=10) # Asset depreciation
+  Table3 = as.data.frame( matrix( NA, nrow = length(kn), ncol= 6 )  )
+  names(Table3) <- c( "B","S", "R.B", "R.S", "AvgPrice", "AvgPrice.liq") 
+  Table3 = data.table(Table3)
+  
+  for (i in 1:length(kn)) {
+    
+    tau=0; # Transportation cost
+    k=kn[i]; # Asset depreciation cost
+    
+    C=15;
+    TotalAssets = 500  
+    Masses = Mass.Assets(TotalAssets)
+    B.prime = Masses$B.prime
+    S.prime = Masses$S.prime
+    R.B = 2; R.S = 2; 
+    B = B.prime/3;  S = S.prime/3;
+    
+    sol = Solve.Parameters(FALSE)
+    R.B = sol[1]
+    R.S = sol[2]
+    B = sol[3]
+    S = sol[4]
+    W.B = lambda/r* integrate( function(z)  K.B(S)*(profit(z)-profit(R.B))*PDF.F(z), lower = R.B, upper = H )$value
+    
+    print( paste0("values: B=", round(B,digits = 3), ", S=", round(S,digits=3),
+                  ", R.B=", round(R.B,digits=3), ", R.S=", round(R.S,digits=3)))
+    Table3$B[i] = B
+    Table3$S[i] = S
+    Table3$R.B[i] = R.B
+    Table3$R.S[i] = R.S
+    
+    Table3$AvgPrice[i] = adaptIntegrate( function(bs) price(bs[1],bs[2])*g.S(R.S,bs[2])*g.B(R.B,bs[1]), lowerLimit=c(R.B,L), upperLimit=c(H,R.S) )$integral
+    
+    # Liquidation Sellers
+    
+    result =  value.iteration(ReturnBuyerThrehold=TRUE)
+    V.liq = result$V.liq; 
+    W.liq = result$W.liq; 
+    
+    Table3$AvgPrice.liq[i] = integrate( function(b) price.liq(b)*g.B(R.B,b), lower=R.B, upper=H )$value
+  }
+  
+  # Normalization
+  kn=seq(0,2,length.out=10) # Asset depreciation
+  Table3_norm = as.data.frame( matrix( NA, nrow = length(kn), ncol= 6 )  )
+  names(Table3_norm) <- c( "B","S", "R.B", "R.S", "AvgPrice_c", "AvgPrice.liq_c") 
+  Table3_norm = data.table(Table3_norm)
+  
+  for (i in 1:length(kn)) {
+    
+    C=0.01;
+    tau=0; # Transportation cost
+    k=kn[i]; # Asset depreciation cost
+    
+    TotalAssets = 500  
+    Masses = Mass.Assets(TotalAssets)
+    B.prime = Masses$B.prime
+    S.prime = Masses$S.prime
+    R.B = 2; R.S = 2; 
+    B = B.prime/3;  S = S.prime/3;
+    
+    sol = Solve.Parameters(FALSE)
+    R.B = sol[1]
+    R.S = sol[2]
+    B = sol[3]
+    S = sol[4]
+    W.B = lambda/r* integrate( function(z)  K.B(S)*(profit(z)-profit(R.B))*PDF.F(z), lower = R.B, upper = H )$value
+    
+    print( paste0("values: B=", round(B,digits = 3), ", S=", round(S,digits=3),
+                  ", R.B=", round(R.B,digits=3), ", R.S=", round(R.S,digits=3)))
+    Table3_norm$B[i] = B
+    Table3_norm$S[i] = S
+    Table3_norm$R.B[i] = R.B
+    Table3_norm$R.S[i] = R.S
+    
+    Table3_norm$AvgPrice_c[i] = adaptIntegrate( function(bs) price(bs[1],bs[2])*g.S(R.S,bs[2])*g.B(R.B,bs[1]), lowerLimit=c(R.B,L), upperLimit=c(H,R.S) )$integral
+    
+    # Liquidation Sellers
+    
+    result =  value.iteration(ReturnBuyerThrehold=TRUE)
+    V.liq = result$V.liq; 
+    W.liq = result$W.liq; 
+    
+    Table3_norm$AvgPrice.liq_c[i] = integrate( function(b) price.liq(b)*g.B(R.B,b), lower=R.B, upper=H )$value
+  }
+  
+  Table3 = cbind(kn, Table3)
+  Table3 = cbind(Table3, AvgPrice_c=Table3_norm$AvgPrice_c)
+  Table3 = cbind(Table3, AvgPrice.liq_c=Table3_norm$AvgPrice.liq_c)
+  
+  Table3$AvgPrice_norm=Table3$AvgPrice/Table3$AvgPrice_c
+  Table3$AvgPrice.liq_norm=Table3$AvgPrice.liq/Table3$AvgPrice.liq_c
+  
+  # *********** 4.2. Plot ***********
+  pdf( "FigureIA10.pdf" , width = 8, height = 6.4)
+  yrange = c( min( c(Table3$AvgPrice,Table3$AvgPrice.liq) ), max( c(Table3$AvgPrice,Table3$AvgPrice.liq))   )
+  plot( kn, Table3$AvgPrice, lwd=3 ,lty=1, col=4, type="l",ylim=yrange, xlab= "Asset Depreciation", ylab = "Average Price" )
+  lines (kn, Table3$AvgPrice.liq, lwd=3, lty=2, col=3 )
+  legend("topright", c("Regular Sellers", "Liquidation Sellers"), lty=c(1,2), lwd=c(3,3), col=c(4,3),bg="white" )
+  dev.off()
+
+  
+  # Reservation values
+  pdf( "FigureIA11.pdf" , width = 8, height = 6.4)
+  yrange = c( min(min(Table3$R.B), min(Table3$R.S)), max(max(Table3$R.B), max(Table3$R.S))  )
+  plot(  kn, Table3$R.B, type="l" , lwd=3 ,lty=2, ylim=yrange, xlab="Asset Depreciation", ylab = "Reservation Values" )
+  lines(  kn, Table3$R.S, type="l" , lwd=3, col="red" )
+  legend("topright", c("Productivity Cutoff for Regular Buyers", "Productivity Cutoff for Regular Sellers"), lty=c(2,1), lwd=c(3,3), col=c("black","red"), bg="white" )
+  dev.off()
+  
+  # Normalization
+  pdf( "FigureIA13.pdf" , width = 8, height = 6.4)
+  yrange = c( min( c(Table3$AvgPrice_norm,Table3$AvgPrice.liq_norm) ), max(c(Table3$AvgPrice_norm,Table3$AvgPrice.liq_norm))   )
+  plot( kn, Table3$AvgPrice_norm, lwd=3 ,lty=1, col=4, type="l",ylim=yrange, xlab= "Asset Depreciation", ylab = "Average Price" )
+  lines (kn, Table3$AvgPrice.liq_norm, lwd=3, lty=2, col=3 )
+  legend("topright", c("Regular Sellers", "Liquidation Sellers"), lty=c(1,2), lwd=c(3,3), col=c(4,3),bg="white" )
+  dev.off()
+  
+  
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
