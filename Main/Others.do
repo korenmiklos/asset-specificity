@@ -1,10 +1,10 @@
 clear all
 
-if ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(username)'" == "sony") | ("`c(username)'" == "julienweber") {
-	global DATA "../Data"
+if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(username)'" == "sony") | ("`c(username)'" == "julienweber") {
+	global DATA "./Data"
 	global CSTAT "$DATA/Compustat"
-	global FIGURES "../Figures"
-	global TABLES "../Tables"
+	global FIGURES "./Figures"
+	global TABLES "./Tables"
 }
 
 program define fastload

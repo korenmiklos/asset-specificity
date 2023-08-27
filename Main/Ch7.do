@@ -1,7 +1,7 @@
 clear all
 
-if ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(username)'" == "sony") {
-	global DATA "../Data"
+if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(username)'" == "sony") {
+	global DATA "./Data"
 	global CAPIQ "$DATA/CapitalIQ"
 	global CSTAT "$DATA/Compustat"
 	global PACER "$DATA/PACER"

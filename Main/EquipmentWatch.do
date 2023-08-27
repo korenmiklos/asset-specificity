@@ -3,8 +3,8 @@ clear all
 set matsize 11000
 set more off, permanently
 
-if ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(username)'" == "sony") {
-	global DATA "../../Data"
+if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(username)'" == "sony") {
+	global DATA "./Data"
 }
 
 
@@ -293,6 +293,7 @@ eststo: reghdfe recover VAgr  if  etype==1, absorb(group2 season) cluster(year g
 eststo: reghdfe recover levmean   if  etype==1, absorb(group bucket season ) cluster(year group)
 eststo: reghdfe recover levmean   if  etype==1, absorb(group2 season) cluster(year group)
 
+* FIXME: TABLES macro not defined in the file
 
 #delimit ;
 estout using "$TABLES/TableIA6.tex", replace style(tex) label mlabels(none) cells(b(fmt(2) star ) se(fmt(2) par)) keep(salegravg VAgr levmean) order(salegravg VAgr levmean)

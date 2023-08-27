@@ -7,8 +7,8 @@ clear
 set matsize 11000
 set more off, permanently
 
-if ("`c(username)'" == "") {
-	global DATA "../DATA"
+if 1 | ("`c(username)'" == "") {
+	global DATA "./Data"
 	global CAPIQ "$DATA/CapitalIQ"
 }
 

@@ -3,10 +3,10 @@ clear all
 set matsize 11000
 set more off, permanently
 
-if ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(username)'" == "sony") {
-	global DATA "../Data"
-	global FIGURES "../Figures"
-	global TABLES "../Tables"
+if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(username)'" == "sony") {
+	global DATA "./Data"
+	global FIGURES "./Figures"
+	global TABLES "./Tables"
 }
 
 /* Liquidation Recovery Rate by Industry */

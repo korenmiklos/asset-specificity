@@ -7,8 +7,8 @@ clear
 set matsize 11000
 set more off, permanently
 
-if ("`c(username)'" == "yueranma")|("`c(username)'" == "sony")|("`c(username)'" == "Yueran Ma")  {
-	global DATA "../Data"
+if 1 | ("`c(username)'" == "yueranma")|("`c(username)'" == "sony")|("`c(username)'" == "Yueran Ma")  {
+	global DATA "./Data"
 }
 
 

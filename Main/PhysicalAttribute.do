@@ -3,8 +3,8 @@ clear all
 set matsize 11000
 set more off, permanently
 
-if ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(username)'" == "sony") {
-	global DATA "../Data"
+if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(username)'" == "sony") {
+	global DATA "./Data"
 }
 
 
@@ -128,6 +128,8 @@ replace `item' = `item'/100
 
 eststo: reg RecoveryPPEMidmod  wtshare  wdshares dp_ppent   KEshr1, robust
 eststo: reg RecoveryPPEMidmod  wtshare  wdshares dp_ppent   KEshr1 VAshr, robust
+
+* FIXME: TABLES macro not defined
 
 #delimit ;
 estout using "$TABLES/TableIA4.tex", replace style(tex) 

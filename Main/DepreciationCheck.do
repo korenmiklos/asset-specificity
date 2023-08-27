@@ -1,11 +1,11 @@
 clear all
 
-if ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(username)'" == "sony") | ("`c(username)'" == "julienweber") {
-	global DATA "../Data"
-	global BEA "../Data/BEA"
+if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(username)'" == "sony") | ("`c(username)'" == "julienweber") {
+	global DATA "./Data"
+	global BEA "$DATA/BEA"
 	global CSTAT "$DATA/Compustat"
-	global FIGURES "../Figures"
-	global TABLES "../Tables"
+	global FIGURES "./Figures"
+	global TABLES "./Tables"
 }
  
 clear all

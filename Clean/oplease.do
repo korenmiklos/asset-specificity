@@ -4,8 +4,8 @@
 
 clear all
 
-if ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  {
-	global DATA "../Data"
+if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  {
+	global DATA "./Data"
 	global CIQ "../Data/CapitalIQ"
 	global CSTAT "../Data/Compustat"
 }

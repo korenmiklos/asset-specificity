@@ -3,14 +3,14 @@ clear all
 set matsize 11000
 set more off, permanently
 
-if ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(username)'" == "sony") {
-	global DATA "../Data"
+if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(username)'" == "sony") {
+	global DATA "./Data"
 	global BEA "$DATA/BEA"
 	global CRSP "$DATA/CRSP"
 	global CSTAT "$DATA/Compustat"
 	global PACER "$DATA//PACER"
-	global FIGURES "../Figures"
-	global TABLES "../Tables"
+	global FIGURES "./Figures"
+	global TABLES "./Tables"
 }
 
 /* Baseline Results Using Annual Data */
