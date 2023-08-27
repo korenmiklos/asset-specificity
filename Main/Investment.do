@@ -153,12 +153,12 @@ eststo: reghdfe f.ppesold  PRecoveryPPEMid `control' if RecoveryPPEMid!=., noa  
 preserve
 collapse (mean) ppesold RecoveryPPEMid PRecoveryPPEMid, by(sic2)
 eststo: reg  ppesold  RecoveryPPEMid, robust
-eststo: reg  ppesold   PRecoveryPPEMid if RecoveryPPEMid!=.,  robust
+eststo: reg  ppesold  PRecoveryPPEMid if RecoveryPPEMid!=.,  robust
 
 twoway (scatter ppesold RecoveryPPEMid) (lfit ppesold RecoveryPPEMid), legend(off) graphregion(color(white)) xtitle("PPE Liquidation Recovery Rate") ytitle("Annual % of Firms Selling PPE")
 graph export "$FIGURES/FigureI_PanelA.pdf", replace as(pdf)
 
-twoway (scatter ppesold RecoveryPPEMid) (lfit ppesold RecoveryPPEMid) , legend(off) graphregion(color(white)) xtitle("Predicted PPE Liquidation Recovery Rate") ytitle("Annual % of Firms Selling PPE")  
+twoway (scatter ppesold PRecoveryPPEMid) (lfit ppesold PRecoveryPPEMid) , legend(off) graphregion(color(white)) xtitle("Predicted PPE Liquidation Recovery Rate") ytitle("Annual % of Firms Selling PPE")  
 graph export "$FIGURES/FigureI_PanelB.pdf", replace as(pdf)
 restore
 
