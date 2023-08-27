@@ -16,7 +16,7 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 ***** CRSP *****
 
 /* Stock Returns */
-
+/*
 	use "$CRSP/crsp_mon.dta", clear
 	ren *, lower
 	
@@ -84,11 +84,11 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 	save "`ccm'"
 
 ***** Compustat *****
-
+*/
 	use "$CSTAT/compustat_ann.dta", clear
 		
-	merge 1:1 gvkey datadate using "`ccm'", keep (1 3) keepusing(linktype lpermno lpermco)
-	drop _merge
+	*merge 1:1 gvkey datadate using "`ccm'", keep (1 3) keepusing(linktype lpermno lpermco)
+	*drop _merge
 	
 	drop if at==.
 	drop if fyear==.
@@ -109,7 +109,7 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 	destring gvkey, replace
 
 * FIXME: this data file seems to be missing from the replication package and README. Maybe defined in oplease.do?
-	merge 1:1 gvkey datadate using "../Lease/lease_firm.dta", keep (1 3) keepusing(rouantq llcq llltq postadoption)
+/*	merge 1:1 gvkey datadate using "../Lease/lease_firm.dta", keep (1 3) keepusing(rouantq llcq llltq postadoption)
 	tab _merge if fyear>=2019
 	drop _merge
 	
@@ -120,9 +120,11 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 	replace lt = lt - llcq - llltq if llcq!=. & llltq!=. & postadoption==1
 	replace lt = lt - rouantq if (llcq==. | llltq==.) & rouantq!=. & postadoption==1
 	gen debt = dlc + dltt  
-	
+*/	
 /* Generate Variables */
 	
+	* keep only INDL format
+	keep if indfmt == "INDL"
 	*Set Panel
 	xtset gvkey fyear 
 	
@@ -133,16 +135,16 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 	gen year = year(dofm(ym))
 	gen yrmo = year*100 + month(dofm(ym))
 	
-	merge 1:1 cusip ym using "`price1'", keep(match master)
+/*	merge 1:1 cusip ym using "`price1'", keep(match master)
 	tab _merge
 	drop _merge
 	
 	merge m:1 lpermno ym using "`price2'", keep(1 3 4 5) update
 	tab _merge
 	drop _merge
-	
+
 	replace mkval = mkval/1000
-		
+*/		
 	*Liability 
 	gen lev = at/seq if seq>0
 	gen lev1 = (dlc+dltt)/at
@@ -169,11 +171,11 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 	gen sale_at = sale/l.at
 	
 	*Valuations
-	gen Q = (mkval+dlc+dltt)/at
+/*	gen Q = (mkval+dlc+dltt)/at
 	gen Q2 = (mkval+at-seq)/at
 	gen mtb = mkval/ceq
 	gen btm = ceq/mkval
-		
+*/		
 	*Investment 
 	gen capx_at = capx/l.at
 	gen capx_ppent = capx/l.ppent
@@ -186,7 +188,7 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 
 /* Winsorize */
 * QUESTION: is this winsorization well documented? Does it matter for results?
-	
+/*	
 	foreach item of varlist lev - aqc_at  {
       bysort fyear: egen tmp_ph=pctile(`item'), p(99)
       bysort fyear: egen tmp_pl=pctile(`item'), p(1)
@@ -204,7 +206,7 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 	 
 	  replace `item' = `item' - 1
     }
-
+*/
 /* Quartiles */
 
 	local k = 3
