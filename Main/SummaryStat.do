@@ -65,5 +65,5 @@ gen ratio2 = (liqval)*at/(mkval + dlc + dltt) if Q2!=.
 label var ratio1 "Total liquidation value/book assets"
 label var ratio2 "Total liquidation value/going-concern value"
 
-estpost tabstat ratio1, 	stats(mean sd p25 p50 p75) columns(statistics)   
+estpost tabstat ratio1 ratio2, 	stats(mean sd p25 p50 p75) columns(statistics)   
 estout using "$TABLES/TableIII_PanelB_p2.tex", replace style(tex) mlabels(none) nonumber collabels(none) cells("mean(fmt(2)) sd(fmt(2)) p25(fmt(2)) p50(fmt(2)) p75(fmt(2))") label

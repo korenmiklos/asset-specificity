@@ -68,7 +68,7 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 	preserve
 	drop cusip
 	ren permno lpermno
-	*ren mkval mkval1
+	ren mkval mkval1
 	tempfile price2
 	save "`price2'"
 	restore
@@ -91,13 +91,15 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 
 	tempfile ccm
 	save "`ccm'", replace
-	
+
 ***** Compustat *****
 
 	use "$CSTAT/compustat_ann.dta", clear
+	* keep only INDL format
+	keep if indfmt == "INDL"
 		
-	*merge 1:1 gvkey datadate using "`ccm'", keep (1 3) keepusing(linktype lpermno lpermco)
-	*drop _merge
+	merge 1:1 gvkey datadate using "`ccm'", keep (1 3) keepusing(linktype lpermno lpermco)
+	drop _merge
 	
 	drop if at==.
 	drop if fyear==.
