@@ -107,7 +107,8 @@ if ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(
 /* Corrections for Operating Leases after 2019 */
 
 	destring gvkey, replace
-	
+
+* FIXME: this data file seems to be missing from the replication package and README. Maybe defined in oplease.do?
 	merge 1:1 gvkey datadate using "../Lease/lease_firm.dta", keep (1 3) keepusing(rouantq llcq llltq postadoption)
 	tab _merge if fyear>=2019
 	drop _merge
@@ -184,6 +185,7 @@ if ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(
 	
 
 /* Winsorize */
+* QUESTION: is this winsorization well documented? Does it matter for results?
 	
 	foreach item of varlist lev - aqc_at  {
       bysort fyear: egen tmp_ph=pctile(`item'), p(99)

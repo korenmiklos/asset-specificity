@@ -37,6 +37,7 @@ if ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(
 	sort date
 	egen days=group(date)
 	tsset permno days
+* FIXME: this is not a standard Stata command. Install and document?
 	bys permno: asreg retex mktrf smb hml, window (days 253) se fit
 	
 	rename _b_mktrf beta_mktrf

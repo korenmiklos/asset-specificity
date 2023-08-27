@@ -16,6 +16,7 @@ if ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(
 ***** CRSP *****
 
 /* Stock Returns */
+* FIXME: this seems to be the same as in compustat_ann.do. I would refactor it to reduce risk of errors.
 
 	use "$CRSP/crsp_mon.dta", clear
 	ren *, lower
@@ -94,6 +95,7 @@ if ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  ("`c(
 	
 	destring gvkey, replace
 	
+* FIXME: again, missing data and same steps repeated
 	merge m:1 gvkey datadate using "../Lease/lease_firm.dta", keep (1 3) keepusing(rouantq llcq llltq postadoption)
 	tab _merge if fyear>=2019
 	drop _merge
