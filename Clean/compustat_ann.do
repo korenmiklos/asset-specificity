@@ -17,12 +17,14 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 
 /* Stock Returns */
 
-	use "$CRSP/crsp_mon.dta", clear
+	import delimited using "$CRSP/crsp_mon.csv", clear
 	ren *, lower
 	
 	keep if trdstat == "A"
 	
-	gen ym = mofd(date)
+// 	destring date, replace 
+	gen date2 = date(date, "YMD")
+	gen ym = mofd(date2)
 	format ym %tm
 	duplicates drop 
 	
@@ -32,6 +34,13 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 	gen mkval = shares_adj*prc_adj
 	
 	keep permno cusip ym mkval ret retx shares_adj prc_adj
+	destring ret, gen(numeric_ret) force
+	destring retx, gen(numeric_retx) force
+	drop ret 
+	drop retx
+	
+	rename numeric_retx retx
+	rename numeric_ret ret
 	duplicates drop 
 	xtset permno ym
 	
@@ -81,8 +90,8 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 	duplicates drop gvkey datadate, force
 
 	tempfile ccm
-	save "`ccm'"
-
+	save "`ccm'", replace
+	
 ***** Compustat *****
 
 	use "$CSTAT/compustat_ann.dta", clear
