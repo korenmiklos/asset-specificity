@@ -1,0 +1,49 @@
+
+  ___  ____  ____  ____  ____ ®
+ /__    /   ____/   /   ____/      17.0
+___/   /   /___/   /   /___/       MP—Parallel Edition
+
+ Statistics and Data Science       Copyright 1985-2021 StataCorp LLC
+                                   StataCorp
+                                   4905 Lakeway Drive
+                                   College Station, Texas 77845 USA
+                                   800-STATA-PC        https://www.stata.com
+                                   979-696-4600        stata@stata.com
+
+Stata license: Single-user 2-core  perpetual
+Serial number: 501706328764
+  Licensed to: Miklos Koren
+               CEU MicroData
+
+Notes:
+      1. Stata is running in batch mode.
+      2. Unicode is supported; see help unicode_advice.
+      3. More than 2 billion observations are allowed; see help obs_advice.
+      4. Maximum number of variables is set to 5,000; see help set_maxvar.
+
+. do Clean/Pacer.do 
+
+. use "Data/PacerRecovery_detail.dta", clear
+
+. 
+. keep sic2 RecoveryPPEMid RecoveryInventoryMid RecoveryReceivableMid RecoveryI
+> ntanMid RecoveryIntanNGWMid
+
+. 
+. * we try an unwighted average first
+. collapse (mean) RecoveryPPEMid RecoveryInventoryMid RecoveryReceivableMid Rec
+> overyIntanMid RecoveryIntanNGWMid, by(sic2)
+
+. 
+. label var RecoveryPPEMid "PPE"
+
+. label var RecoveryInventoryMid "Inventory"
+
+. label var RecoveryReceivableMid "Receivable"
+
+. label var RecoveryIntanMid "Book intangible"
+
+. label var RecoveryIntanNGWMid "Non-goodwill book intangible"
+
+. 
+end of do-file
