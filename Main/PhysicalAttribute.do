@@ -106,8 +106,9 @@ replace `item' = `item'/100
 
 eststo clear
 
-eststo: reg RecoveryPPEMidmod wtshare  wdshares dp_ppent  KEshr1, robust beta
-eststo: reg RecoveryPPEMidmod wtshare  wdshares dp_ppent  KEshr1  saleshrind, robust beta
+* NB: RecoveryPPEMidmod does not exist
+eststo: reg RecoveryPPEMid wtshare  wdshares dp_ppent  KEshr1, robust beta
+eststo: reg RecoveryPPEMid wtshare  wdshares dp_ppent  KEshr1  saleshrind, robust beta
 
 use "$DATA/RecoveryPhysicsFA97_bea.dta", clear
 
@@ -126,8 +127,8 @@ foreach item of varlist RecoveryPPEMid* {
 replace `item' = `item'/100
 }
 
-eststo: reg RecoveryPPEMidmod  wtshare  wdshares dp_ppent   KEshr1, robust
-eststo: reg RecoveryPPEMidmod  wtshare  wdshares dp_ppent   KEshr1 VAshr, robust
+eststo: reg RecoveryPPEMid  wtshare  wdshares dp_ppent   KEshr1, robust
+eststo: reg RecoveryPPEMid  wtshare  wdshares dp_ppent   KEshr1 VAshr, robust
 
 * FIXME: TABLES macro not defined
 
@@ -325,6 +326,7 @@ drop if sic>=9000 & sic!=.
 
 end
 
+* NB: This data file is not referenced in the README
 use "$DATA/Compustat/compustat_segment.dta", clear
 
 keep if stype=="GEOSEG"

@@ -209,13 +209,14 @@ keep if year==1997
 reg RecoveryPPEMid   wtshare wdshares  dp_ppent KEshr , robust  
 predict PRecoveryPPEMid
 
-keep sic2 RecoveryPPEMid wtshare wdshares  dp_ppent KEshr saleshrind PRecoveryPPEMid
-order sic2 RecoveryPPEMid wtshare wdshares  dp_ppent KEshr saleshrind PRecoveryPPEMid
+keep sic2 RecoveryPPEMid wtshare wdshares  dp_ppent dp_ppegt KEshr saleshrind PRecoveryPPEMid
+order sic2 RecoveryPPEMid wtshare wdshares  dp_ppent dp_ppegt KEshr saleshrind PRecoveryPPEMid
 
 label var RecoveryPPEMid "PPE liquidation recovery rate"
 label var PRecoveryPPEMid "Predicted PPE liquidation recovery rate"
 label var wtshare  "Transportation cost"
 label var dp_ppent "Depreciation rate"
+label var dp_ppegt "Depreciation rate (gross)"
 label var wdshares "Design cost share"
 label var KEshr "Equipment share"
 label var saleshrind "Industry size (sales share) "
@@ -239,7 +240,8 @@ drop if SIC==.
 ren SIC sic2
 duplicates drop sector sic2, force
  
-merge m:1 sic2 using "$BEA/RecoveryPhysicsFA97_sic2.dta", keep(1 3) keepusing(dp_ppegt dp_ppent)
+* NB: File is in different folder 
+merge m:1 sic2 using "Data/RecoveryPhysicsFA97_sic2.dta", keep(1 3) keepusing(dp_ppegt dp_ppent)
 tab _merge
 drop _merge
 
@@ -265,8 +267,9 @@ keep if year==1997
 reg RecoveryPPEMid   wtshare wdshares  dp_ppent KEshr , robust
 predict PRecoveryPPEMid
 
-keep sector RecoveryPPEMid wtshare wdshares  dp_ppent KEshr VAshr PRecoveryPPEMid
-order sector RecoveryPPEMid wtshare wdshares  dp_ppent KEshr VAshr PRecoveryPPEMid
+* NB: VAshr does not exist in prior data, cannot be programmatically reproduced
+keep sector RecoveryPPEMid wtshare wdshares  dp_ppent dp_ppegt KEshr PRecoveryPPEMid
+order sector RecoveryPPEMid wtshare wdshares  dp_ppent dp_ppegt KEshr PRecoveryPPEMid
 
 label var sector "BEA fixed asset industries"
 label var RecoveryPPEMid "PPE liquidation recovery rate"
@@ -275,6 +278,5 @@ label var wtshare "Transportation cost"
 label var dp_ppent "Depreciation rate"
 label var wdshares "Design cost share"
 label var KEshr "Equipment share"
-label var VAshr "Industry size (value-added share)"
 
-save "$DATA/RecoveryPhysicsFA97_bea.dta", replace
+save "$BEA/RecoveryPhysicsFA97_bea.dta", replace
