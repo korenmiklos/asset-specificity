@@ -16,7 +16,7 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 ***** CRSP *****
 
 /* Stock Returns */
-/*
+
 	use "$CRSP/crsp_mon.dta", clear
 	ren *, lower
 	
@@ -84,7 +84,7 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 	save "`ccm'"
 
 ***** Compustat *****
-*/
+
 	use "$CSTAT/compustat_ann.dta", clear
 		
 	*merge 1:1 gvkey datadate using "`ccm'", keep (1 3) keepusing(linktype lpermno lpermco)
@@ -135,7 +135,7 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 	gen year = year(dofm(ym))
 	gen yrmo = year*100 + month(dofm(ym))
 	
-/*	merge 1:1 cusip ym using "`price1'", keep(match master)
+	merge 1:1 cusip ym using "`price1'", keep(match master)
 	tab _merge
 	drop _merge
 	
@@ -144,7 +144,7 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 	drop _merge
 
 	replace mkval = mkval/1000
-*/		
+		
 	*Liability 
 	gen lev = at/seq if seq>0
 	gen lev1 = (dlc+dltt)/at
@@ -171,11 +171,11 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 	gen sale_at = sale/l.at
 	
 	*Valuations
-/*	gen Q = (mkval+dlc+dltt)/at
+	gen Q = (mkval+dlc+dltt)/at
 	gen Q2 = (mkval+at-seq)/at
 	gen mtb = mkval/ceq
 	gen btm = ceq/mkval
-*/		
+		
 	*Investment 
 	gen capx_at = capx/l.at
 	gen capx_ppent = capx/l.ppent
@@ -188,7 +188,7 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 
 /* Winsorize */
 * QUESTION: is this winsorization well documented? Does it matter for results?
-/*	
+	
 	foreach item of varlist lev - aqc_at  {
       bysort fyear: egen tmp_ph=pctile(`item'), p(99)
       bysort fyear: egen tmp_pl=pctile(`item'), p(1)
@@ -206,7 +206,7 @@ if 1 | ("`c(username)'" == "yueranma") |  ("`c(username)'" == "Yueran Ma")  |  (
 	 
 	  replace `item' = `item' - 1
     }
-*/
+
 /* Quartiles */
 
 	local k = 3
